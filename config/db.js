@@ -1,8 +1,9 @@
 const mongoose=require("mongoose")
+require("dotenv").config()
 
 async function connectdb(){
     try{
-        await mongoose.connect("mongodb://localhost:27017/pizzac") 
+        await mongoose.connect(`${process.env.MONGODB_URL}/pizzac`) 
        console.log("db connected successfully!")
     }catch(err){
         console.log(err)
