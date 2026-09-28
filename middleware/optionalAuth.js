@@ -1,9 +1,12 @@
+// middleware/optionalAuth.js
 const jwt = require('jsonwebtoken')
 
-const checkAuth = (req, res, next) => {
+const optionalAuth = (req, res, next) => {
     const authHeader = req.headers.authorization
+
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return res.status(401).json({ message: 'No token provided' })
+        req.user = null
+        return next()
     }
 
     const token = authHeader.split(' ')[1]
@@ -12,8 +15,9 @@ const checkAuth = (req, res, next) => {
         req.user = decoded.user_info
         next()
     } catch (err) {
-        return res.status(401).json({ message: 'Invalid or expired token' })
+        req.user = null // Token expired/invalid -> treat as guest
+        next()
     }
 }
 
-module.exports = checkAuth
+module.exports = optionalAuth

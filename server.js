@@ -30,7 +30,7 @@ const corsOptions = {
   },
   credentials: true, // Enable if sending cookies or auth headers
   methods: ["GET", "POST", "PUT", "DELETE"],
-  allowedHeaders: ["Content-Type", "Authorization"],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-guest-id'],
 };
 
 app.use(cors(corsOptions));
@@ -40,7 +40,7 @@ app.use(express.json());
 app.use("/api/food", fooditemRoutes);
 app.use("/api/user", userRoutes);
 app.use("/api/cart", cartRoute);
-app.use("/api/order", orderRoutes);
+app.use("/api/orders", orderRoutes);
 
 app.get("/", (req, res) => {
   res.send("Server is running healthy");

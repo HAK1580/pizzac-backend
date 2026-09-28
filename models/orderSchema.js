@@ -1,7 +1,13 @@
-const mongoose=require("mongoose")
+const mongoose = require("mongoose")
 
 const orderSchema = new mongoose.Schema({
-  user: { type: mongoose.Schema.Types.ObjectId, ref: 'user', required: true },
+  // Make user optional so guest orders can be saved without a userId
+  user: { type: mongoose.Schema.Types.ObjectId, ref: 'user', required: false, default: null },
+  guestId: { type: String, default: null },
+  guestInfo: {
+    name: { type: String, default: '' },
+    email: { type: String, default: '' },
+  },
   items: [
     {
       name: String,

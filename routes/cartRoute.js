@@ -1,12 +1,13 @@
 const express = require('express')
 const router = express.Router()
-const checkAuth = require('../middleware/checkAuth')
-const { getCartItems, createCartItems, updateCartItem, removeCartItem, clearCart } = require('../controllers/cartController')
+const optionalAuth = require('../middleware/optionalAuth') // Use optionalAuth instead of checkAuth
+const { getCartItems, createCartItems, updateCartItem, removeCartItem, clearCart, mergeCart } = require('../controllers/cartController')
 
-router.get('/', checkAuth, getCartItems)
-router.post('/', checkAuth, createCartItems)
-router.patch('/:id', checkAuth, updateCartItem)
-router.delete('/:id', checkAuth, removeCartItem)
-router.delete('/', checkAuth, clearCart)
+router.get('/', optionalAuth, getCartItems)
+router.post('/', optionalAuth, createCartItems)
+router.patch('/:id', optionalAuth, updateCartItem)
+router.delete('/:id', optionalAuth, removeCartItem)
+router.delete('/', optionalAuth, clearCart)
+router.post('/merge', optionalAuth, mergeCart)
 
 module.exports = router

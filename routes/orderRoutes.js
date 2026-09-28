@@ -1,11 +1,11 @@
 const express = require('express')
 const router = express.Router()
-const verifyToken = require('../middleware/checkAuth')
+const optionalAuth = require('../middleware/optionalAuth')
 const { placeOrder, getMyOrders, getOrderById, updateOrderStatus } = require('../controllers/orderController')
 
-router.post('/', verifyToken, placeOrder)
-router.get('/', verifyToken, getMyOrders)
-router.get('/:id', verifyToken, getOrderById)
-router.patch('/:id/status', verifyToken, updateOrderStatus)
+router.post('/', optionalAuth, placeOrder)
+router.get('/', optionalAuth, getMyOrders)
+router.get('/:id', optionalAuth, getOrderById)
+router.patch('/:id/status', updateOrderStatus) // keep protected by admin middleware if required
 
 module.exports = router

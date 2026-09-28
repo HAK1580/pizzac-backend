@@ -1,9 +1,26 @@
 const cart = require('../models/cartSchema')
 
+// Helper function to dynamically construct the ownership query
+const getCartQuery = (req) => {
+    if (req.user && req.user.id) {
+        return { user: req.user.id }
+    }
+    const guestId = req.headers['x-guest-id'] || req.body.guestId || req.query.guestId
+    if (guestId) {
+        return { guestId }
+    }
+    return null
+}
+
 // GET /api/cart
 const getCartItems = async (req, res) => {
     try {
-        const cart_items = await cart.find({ user: req.user.id })
+        const query = getCartQuery(req)
+        if (!query) {
+            return res.status(200).json({ message: 'Cart fetched successfully', cart_items: [] })
+        }
+
+        const cart_items = await cart.find(query)
         res.status(200).json({ message: 'Cart fetched successfully', cart_items })
     } catch (err) {
         console.log(err)
@@ -11,10 +28,20 @@ const getCartItems = async (req, res) => {
     }
 }
 
+// POST /api/cart
 const createCartItems = async (req, res) => {
-    const { name, price, qty, img } = req.body
+    const { name, price, qty, img, guestId } = req.body
+
+    const userId = req.user?.id || null
+    const finalGuestId = !userId ? (guestId || req.headers['x-guest-id']) : null
+
+    if (!userId && !finalGuestId) {
+        return res.status(400).json({ message: 'User ID or Guest ID is required' })
+    }
+
     try {
-        const existing_item = await cart.findOne({ user: req.user.id, name })
+        const query = userId ? { user: userId, name } : { guestId: finalGuestId, name }
+        const existing_item = await cart.findOne(query)
 
         if (existing_item) {
             existing_item.qty += qty || 1
@@ -27,7 +54,8 @@ const createCartItems = async (req, res) => {
             price,
             qty: qty || 1,
             img,
-            user: req.user.id,
+            user: userId,
+            guestId: finalGuestId,
         })
         res.status(201).json({ message: 'Item added to cart', cart_item: new_cart_item })
     } catch (err) {
@@ -40,8 +68,14 @@ const createCartItems = async (req, res) => {
 const updateCartItem = async (req, res) => {
     const { id } = req.params
     const { qty } = req.body
+
     try {
-        const item = await cart.findOne({ _id: id, user: req.user.id })
+        const query = getCartQuery(req)
+        if (!query) {
+            return res.status(400).json({ message: 'User ID or Guest ID is required' })
+        }
+
+        const item = await cart.findOne({ _id: id, ...query })
         if (!item) {
             return res.status(404).json({ message: 'Cart item not found' })
         }
@@ -59,8 +93,14 @@ const updateCartItem = async (req, res) => {
 // DELETE /api/cart/:id
 const removeCartItem = async (req, res) => {
     const { id } = req.params
+
     try {
-        const deleted = await cart.findOneAndDelete({ _id: id, user: req.user.id })
+        const query = getCartQuery(req)
+        if (!query) {
+            return res.status(400).json({ message: 'User ID or Guest ID is required' })
+        }
+
+        const deleted = await cart.findOneAndDelete({ _id: id, ...query })
         if (!deleted) {
             return res.status(404).json({ message: 'Cart item not found' })
         }
@@ -72,10 +112,15 @@ const removeCartItem = async (req, res) => {
     }
 }
 
-// DELETE /api/cart
+// DELETE /api/carta
 const clearCart = async (req, res) => {
     try {
-        await cart.deleteMany({ user: req.user.id })
+        const query = getCartQuery(req)
+        if (!query) {
+            return res.status(400).json({ message: 'User ID or Guest ID is required' })
+        }
+
+        await cart.deleteMany(query)
         res.status(200).json({ message: 'Cart cleared' })
     } catch (err) {
         console.log(err)
@@ -83,4 +128,45 @@ const clearCart = async (req, res) => {
     }
 }
 
-module.exports = { getCartItems, createCartItems, updateCartItem, removeCartItem, clearCart }
+// POST /api/cart/merge (Call after user logs in)
+const mergeCart = async (req, res) => {
+    const { guestId } = req.body
+    const userId = req.user?.id
+
+    if (!userId || !guestId) {
+        return res.status(400).json({ message: 'Both User authentication and Guest ID are required' })
+    }
+
+    try {
+        const guestItems = await cart.find({ guestId })
+
+        for (const item of guestItems) {
+            const userItem = await cart.findOne({ user: userId, name: item.name })
+
+            if (userItem) {
+                userItem.qty += item.qty
+                await userItem.save()
+                await cart.findByIdAndDelete(item._id)
+            } else {
+                item.user = userId
+                item.guestId = null
+                await item.save()
+            }
+        }
+
+        const updatedCart = await cart.find({ user: userId })
+        res.status(200).json({ message: 'Cart merged successfully', cart_items: updatedCart })
+    } catch (err) {
+        console.log(err)
+        res.status(500).json({ message: 'server error' })
+    }
+}
+
+module.exports = {
+    getCartItems,
+    createCartItems,
+    updateCartItem,
+    removeCartItem,
+    clearCart,
+    mergeCart
+}
